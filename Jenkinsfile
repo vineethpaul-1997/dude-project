@@ -5,6 +5,8 @@ agent any
 environment {
     IMAGE_NAME = "vineethpv1997/python"
     K8S_MASTER = "192.168.232.135"
+    DEPLOYMENT = "python-demo"
+    CONTAINER = "python-demo"
 }
 
 stages {
@@ -52,11 +54,7 @@ stages {
             ssh root@${K8S_MASTER} '
             kubectl apply -f /root/deployment.yaml
             kubectl apply -f /root/service.yaml
-
-            kubectl set image deployment/python-demo \
-            python-demo=${IMAGE_NAME}:${BUILD_NUMBER}
-
-            kubectl rollout status deployment/python-demo
+            kubectl rollout status deployment/${DEPLOYMENT}
             '
             """
         }
@@ -65,11 +63,11 @@ stages {
 
 post {
     success {
-        echo "Pipeline completed successfully"
+        echo 'Deployment completed successfully'
     }
 
     failure {
-        echo "Pipeline failed"
+        echo 'Pipeline failed'
     }
 }
 ```
