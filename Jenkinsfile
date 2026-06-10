@@ -47,7 +47,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
-                ssh ubuntu@${K8S_MASTER} '
+                ssh root@${K8S_MASTER} '
                 kubectl set image deployment/${DEPLOYMENT} \
                 ${CONTAINER}=${IMAGE_NAME}:${BUILD_NUMBER}
 
