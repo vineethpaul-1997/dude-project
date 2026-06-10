@@ -24,7 +24,7 @@ stages {
         }
     }
 
-    stage('Push Docker Image') {
+    stage('Push to Docker Hub') {
         steps {
             withCredentials([
                 usernamePassword(
@@ -46,16 +46,17 @@ stages {
     stage('Deploy to Kubernetes') {
         steps {
             sh """
-            sed 's|vineethpv1997/python:latest|${IMAGE_NAME}:${BUILD_NUMBER}|g' deployment.yaml > deployment-final.yaml
-
-            scp deployment-final.yaml root@${K8S_MASTER}:/root/deployment.yaml
-            scp service.yaml root@${K8S_MASTER}:/root/service.yaml
+            scp deployment.yaml root@${K8S_MASTER}:/root/
+            scp service.yaml root@${K8S_MASTER}:/root/
 
             ssh root@${K8S_MASTER} '
-                kubectl apply -f /root/deployment.yaml
-                kubectl apply -f /root/service.yaml
+            kubectl apply -f /root/deployment.yaml
+            kubectl apply -f /root/service.yaml
 
-                kubectl rollout status deployment/python-demo
+            kubectl set image deployment/python-demo \
+            python-demo=${IMAGE_NAME}:${BUILD_NUMBER}
+
+            kubectl rollout status deployment/python-demo
             '
             """
         }
@@ -64,11 +65,11 @@ stages {
 
 post {
     success {
-        echo "Deployment Successful"
+        echo "Pipeline completed successfully"
     }
 
     failure {
-        echo "Pipeline Failed"
+        echo "Pipeline failed"
     }
 }
 ```
