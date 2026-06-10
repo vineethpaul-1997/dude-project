@@ -23,7 +23,7 @@ spec:
 
       - name: python-demo
 
-        image: vineethpv1997/python:1
+        image: vineethpv1997/python:latest
 
         ports:
 
