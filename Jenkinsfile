@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "vineethpv1997/python-demo"
+        IMAGE_NAME = "vineethpv1997/python"
         K8S_MASTER = "192.168.232.135"
         DEPLOYMENT = "python-demo"
         CONTAINER = "python-demo"
