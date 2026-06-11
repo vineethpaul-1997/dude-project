@@ -1,75 +1,172 @@
 pipeline {
-agent any
+    agent any
 
+    environment {
+        FRONTEND_IMAGE = "vineethpv1997/devops-frontend"
+        BACKEND_IMAGE  = "vineethpv1997/devops-backend"
 
-environment {
-    IMAGE_NAME = "vineethpv1997/python"
-    K8S_MASTER = "192.168.232.135"
-    DEPLOYMENT = "python-demo"
-    CONTAINER = "python-demo"
-}
+        K8S_MASTER = "192.168.232.135"
 
-stages {
-
-    stage('Checkout') {
-        steps {
-            checkout scm
-        }
+        GIT_REPO = "https://github.com/vineethpaul-1997/YOUR_REPO.git"
+        GIT_BRANCH = "main"
     }
 
-    stage('Build Docker Image') {
-        steps {
-            sh """
-            docker build --no-cache -t ${IMAGE_NAME}:${BUILD_NUMBER} .
-            docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest
-            """
-        }
-    }
+    stages {
 
-    stage('Push to Docker Hub') {
-        steps {
-            withCredentials([
-                usernamePassword(
-                    credentialsId: 'dockerhub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
+        stage('Checkout') {
+            steps {
+                git(
+                    url: "${GIT_REPO}",
+                    branch: "${GIT_BRANCH}",
+                    credentialsId: "github-creds"
                 )
-            ]) {
-                sh """
-                echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+            }
+        }
 
-                docker push ${IMAGE_NAME}:${BUILD_NUMBER}
-                docker push ${IMAGE_NAME}:latest
+        stage('Build Frontend Image') {
+            steps {
+                sh """
+                docker build --no-cache \
+                -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} \
+                -t ${FRONTEND_IMAGE}:latest \
+                ./frontend
                 """
             }
         }
-    }
 
-    stage('Deploy to Kubernetes') {
-        steps {
-            sh """
-            scp deployment.yaml root@${K8S_MASTER}:/root/
-            scp service.yaml root@${K8S_MASTER}:/root/
-
-            ssh root@${K8S_MASTER} '
-            kubectl apply -f /root/deployment.yaml
-            kubectl apply -f /root/service.yaml
-            kubectl rollout status deployment/${DEPLOYMENT}
-            '
-            """
+        stage('Build Backend Image') {
+            steps {
+                sh """
+                docker build --no-cache \
+                -t ${BACKEND_IMAGE}:${BUILD_NUMBER} \
+                -t ${BACKEND_IMAGE}:latest \
+                ./backend
+                """
+            }
         }
+
+        stage('Push Images') {
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+
+                    sh """
+
+                    echo \$DOCKER_PASS | docker login \
+                    -u \$DOCKER_USER \
+                    --password-stdin
+
+                    docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                    docker push ${FRONTEND_IMAGE}:latest
+
+                    docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                    docker push ${BACKEND_IMAGE}:latest
+
+                    """
+
+                }
+
+            }
+        }
+
+        stage('Deploy Frontend') {
+            steps {
+
+                sh """
+
+                scp -o StrictHostKeyChecking=no \
+                frontend/deployment.yaml \
+                root@${K8S_MASTER}:/root/frontend-deployment.yaml
+
+                scp -o StrictHostKeyChecking=no \
+                frontend/service.yaml \
+                root@${K8S_MASTER}:/root/frontend-service.yaml
+
+                ssh -o StrictHostKeyChecking=no \
+                root@${K8S_MASTER} '
+
+                kubectl apply -f /root/frontend-deployment.yaml
+
+                kubectl apply -f /root/frontend-service.yaml
+
+                kubectl rollout restart deployment/frontend
+
+                kubectl rollout status deployment/frontend
+
+                '
+
+                """
+
+            }
+        }
+
+        stage('Deploy Backend') {
+            steps {
+
+                sh """
+
+                scp -o StrictHostKeyChecking=no \
+                backend/deployment.yaml \
+                root@${K8S_MASTER}:/root/backend-deployment.yaml
+
+                scp -o StrictHostKeyChecking=no \
+                backend/service.yaml \
+                root@${K8S_MASTER}:/root/backend-service.yaml
+
+                ssh -o StrictHostKeyChecking=no \
+                root@${K8S_MASTER} '
+
+                kubectl apply -f /root/backend-deployment.yaml
+
+                kubectl apply -f /root/backend-service.yaml
+
+                kubectl rollout restart deployment/backend
+
+                kubectl rollout status deployment/backend
+
+                '
+
+                """
+
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+
+                sh """
+
+                ssh -o StrictHostKeyChecking=no \
+                root@${K8S_MASTER} "
+
+                kubectl get pods -o wide
+
+                kubectl get svc
+
+                "
+
+                """
+
+            }
+        }
+
+    }
+
+    post {
+
+        success {
+            echo "✅ Frontend and Backend deployed successfully"
+        }
+
+        failure {
+            echo "❌ Pipeline failed"
+        }
+
     }
 }
-
-post {
-    success {
-        echo 'Deployment completed successfully'
-    }
-
-    failure {
-        echo 'Pipeline failed'
-    }
-}
-
-}
-
