@@ -7,7 +7,7 @@ pipeline {
 
         K8S_MASTER = "192.168.232.135"
 
-        GIT_REPO = "https://github.com/vineethpaul-1997/dude-project.git"
+        GIT_REPO = "https://github.com/vineethpaul-1997/dude-project.gi"
         GIT_BRANCH = "main"
     }
 
