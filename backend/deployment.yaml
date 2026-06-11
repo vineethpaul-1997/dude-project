@@ -2,29 +2,26 @@ apiVersion: apps/v1
 kind: Deployment
 
 metadata:
-  name: python-demo
+  name: backend
 
 spec:
   replicas: 2
 
   selector:
     matchLabels:
-      app: python-demo
+      app: backend
 
   template:
-
     metadata:
       labels:
-        app: python-demo
+        app: backend
 
     spec:
-
       containers:
+      - name: backend
+        image: vineethpv1997/devops-backend:latest
 
-      - name: python-demo
-
-        image: vineethpv1997/python:latest
         imagePullPolicy: Always
-        ports:
 
+        ports:
         - containerPort: 5000
