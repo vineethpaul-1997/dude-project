@@ -19,6 +19,7 @@ spec:
     spec:
       containers:
       - name: backend
+
         image: vineethpv1997/devops-backend:latest
 
         imagePullPolicy: Always

@@ -1,45 +1,81 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
+import mysql.connector
 
 app = Flask(__name__)
 
-@app.route('/')
+db = mysql.connector.connect(
+    host="mysql-service",
+    user="root",
+    password="root123",
+    database="userdb"
+)
+
+cursor = db.cursor()
+
+@app.route("/")
 def home():
     return jsonify({
-        "application": "Python DevOps Backend",
-        "status": "Running"
+        "status":"Backend Running"
     })
 
-@app.route('/python')
-def python():
+@app.route("/register", methods=["POST"])
+def register():
+
+    data=request.get_json()
+
+    username=data["username"]
+    email=data["email"]
+    password=data["password"]
+
+    sql="""
+    INSERT INTO users
+    (username,email,password)
+    VALUES(%s,%s,%s)
+    """
+
+    values=(username,email,password)
+
+    cursor.execute(sql,values)
+
+    db.commit()
+
     return jsonify({
-        "title": "Python",
-        "subtitle": "Backend Service",
-        "description": "Python is used for web development, AI, automation and DevOps."
+        "message":"Registration Successful"
     })
 
-@app.route('/docker')
-def docker():
+@app.route("/login", methods=["POST"])
+def login():
+
+    data=request.get_json()
+
+    username=data["username"]
+    password=data["password"]
+
+    sql="""
+    SELECT *
+    FROM users
+    WHERE username=%s
+    AND password=%s
+    """
+
+    values=(username,password)
+
+    cursor.execute(sql,values)
+
+    user=cursor.fetchone()
+
+    if user:
+
+        return jsonify({
+            "message":"Login Successful"
+        })
+
     return jsonify({
-        "title": "Docker",
-        "subtitle": "Containerized",
-        "description": "Docker packages applications into lightweight containers."
-    })
+        "message":"Invalid Credentials"
+    }),401
 
-@app.route('/jenkins')
-def jenkins():
-    return jsonify({
-        "title": "Jenkins",
-        "subtitle": "CI/CD Pipeline",
-        "description": "Jenkins automates build, testing and deployment."
-    })
-
-@app.route('/kubernetes')
-def kubernetes():
-    return jsonify({
-        "title": "Kubernetes",
-        "subtitle": "Orchestrated",
-        "description": "Kubernetes manages containerized applications."
-    })
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if __name__=="__main__":
+    app.run(
+        host="0.0.0.0",
+        port=5000
+    )

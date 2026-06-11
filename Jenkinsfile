@@ -2,13 +2,14 @@ pipeline {
     agent any
 
     environment {
+
+        GIT_REPO = "https://github.com/vineethpaul-1997/dude-project.git"
+        GIT_BRANCH = "main"
+
         FRONTEND_IMAGE = "vineethpv1997/devops-frontend"
         BACKEND_IMAGE  = "vineethpv1997/devops-backend"
 
         K8S_MASTER = "192.168.232.135"
-
-        GIT_REPO = "https://github.com/vineethpaul-1997/dude-project.git"
-        GIT_BRANCH = "main"
     }
 
     stages {
@@ -23,7 +24,7 @@ pipeline {
             }
         }
 
-        stage('Build Frontend Image') {
+        stage('Build Frontend') {
             steps {
                 sh """
                 docker build --no-cache \
@@ -34,7 +35,7 @@ pipeline {
             }
         }
 
-        stage('Build Backend Image') {
+        stage('Build Backend') {
             steps {
                 sh """
                 docker build --no-cache \
@@ -46,6 +47,7 @@ pipeline {
         }
 
         stage('Push Images') {
+
             steps {
 
                 withCredentials([
@@ -73,9 +75,41 @@ pipeline {
                 }
 
             }
+
+        }
+
+        stage('Deploy Database') {
+
+            steps {
+
+                sh """
+
+                scp -o StrictHostKeyChecking=no \
+                database/deployment.yaml \
+                root@${K8S_MASTER}:/root/mysql-deployment.yaml
+
+                scp -o StrictHostKeyChecking=no \
+                database/service.yaml \
+                root@${K8S_MASTER}:/root/mysql-service.yaml
+
+                ssh -o StrictHostKeyChecking=no root@${K8S_MASTER} '
+
+                kubectl apply -f /root/mysql-deployment.yaml
+
+                kubectl apply -f /root/mysql-service.yaml
+
+                kubectl rollout status deployment/mysql
+
+                '
+
+                """
+
+            }
+
         }
 
         stage('Deploy Frontend') {
+
             steps {
 
                 sh """
@@ -88,8 +122,7 @@ pipeline {
                 frontend/service.yaml \
                 root@${K8S_MASTER}:/root/frontend-service.yaml
 
-                ssh -o StrictHostKeyChecking=no \
-                root@${K8S_MASTER} '
+                ssh -o StrictHostKeyChecking=no root@${K8S_MASTER} '
 
                 kubectl apply -f /root/frontend-deployment.yaml
 
@@ -104,9 +137,11 @@ pipeline {
                 """
 
             }
+
         }
 
         stage('Deploy Backend') {
+
             steps {
 
                 sh """
@@ -119,8 +154,7 @@ pipeline {
                 backend/service.yaml \
                 root@${K8S_MASTER}:/root/backend-service.yaml
 
-                ssh -o StrictHostKeyChecking=no \
-                root@${K8S_MASTER} '
+                ssh -o StrictHostKeyChecking=no root@${K8S_MASTER} '
 
                 kubectl apply -f /root/backend-deployment.yaml
 
@@ -135,25 +169,39 @@ pipeline {
                 """
 
             }
+
         }
 
-        stage('Verify Deployment') {
+        stage('Verify') {
+
             steps {
 
                 sh """
 
-                ssh -o StrictHostKeyChecking=no \
-                root@${K8S_MASTER} "
+                ssh -o StrictHostKeyChecking=no root@${K8S_MASTER} "
+
+                echo '===== PODS ====='
 
                 kubectl get pods -o wide
 
+                echo
+
+                echo '===== SERVICES ====='
+
                 kubectl get svc
+
+                echo
+
+                echo '===== DEPLOYMENTS ====='
+
+                kubectl get deployments
 
                 "
 
                 """
 
             }
+
         }
 
     }
@@ -161,7 +209,7 @@ pipeline {
     post {
 
         success {
-            echo "✅ Frontend and Backend deployed successfully"
+            echo "✅ Frontend + Backend + Database deployed successfully"
         }
 
         failure {
@@ -169,4 +217,5 @@ pipeline {
         }
 
     }
+
 }
